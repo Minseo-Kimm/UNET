@@ -11,21 +11,31 @@ dir_val = os.path.join(dir_data, 'val')
 dir_test = os.path.join(dir_data, 'test')
 
 class kits19_Dataset(torch.utils.data.Dataset):
-    def __init__(self, data_dir, transform=None):   # data_dir 자리에는 train | val | test가 온다
-        self.data_dir = data_dir
-        self.transform = transform
+    def __init__(self, data_dir, transform=None, mode='kid'):   
+        # data_dir 자리에는 train | val | test가 온다
+        # mode에는 all | kid | tum가 오며, all은 모든 슬라이스에 대해, kid와 tum는 각각 kidney와 tumor가 존재하는 슬라이스만 학습한다.
         self.is_test = 'test' in data_dir
+        self.transform = transform
+        if (mode == 'kid'):
+            self.data_dir = os.path.join(data_dir, 'kid_valid')
+            vol_dir = os.path.join(self.data_dir, 'vol')
+            self.lst_vol = sorted(list(glob(vol_dir + '\*\*.npy')))
+            seg_dir = os.path.join(self.data_dir, 'seg')
+            self.lst_seg = sorted(list(glob(seg_dir + '\*\*.npy')))
 
-        lst_data = sorted(list(glob(self.data_dir + '\*\*.npy')))
+        elif (mode == 'tum'):
+            self.data_dir = os.path.join(data_dir, 'tum_valid')
+            vol_dir = os.path.join(self.data_dir, 'vol')
+            self.lst_vol = sorted(list(glob(vol_dir + '\*\*.npy')))
+            seg_dir = os.path.join(self.data_dir, 'seg')
+            self.lst_seg = sorted(list(glob(seg_dir + '\*\*.npy')))
 
-        lst_vol = []
-        lst_seg = []
-        for f in lst_data:
-            if ('vol' in f) : lst_vol.append(f)
-            elif ('seg' in f) : lst_seg.append(f)
-
-        self.lst_vol = lst_vol
-        self.lst_seg = lst_seg
+        else :
+            self.data_dir = data_dir
+            vol_dir = os.path.join(self.data_dir + 'vol')
+            self.lst_vol = sorted(list(glob(vol_dir, '\*\*.npy')))
+            seg_dir = os.path.join(self.data_dir + 'seg_kidney')
+            self.lst_seg = sorted(list(glob(seg_dir, '\*\*.npy')))
 
     def __len__(self):
         return len(self.lst_vol)
@@ -86,21 +96,27 @@ transform = transforms.Compose([Normalization(), RandomFlip(), ToTensor()])
 """
 # check
 data_train = kits19_Dataset(dir_train, transform=transform)
-print(data_train.__len__())
+len = data_train.__len__()
+print(len)
 print(data_train.lst_vol[:10])
 print(data_train.lst_seg[:10])
 
-data = data_train.__getitem__(1000)
-vol = data['vol']
-seg = data['seg']
-print(vol.shape)
-print(type(vol))
+for i in range(10):
+    idx = int(np.random.rand() * len)
+    data = data_train.__getitem__(idx)
+    print(idx)
+    vol = data['vol']
+    seg = data['seg']
+    print(seg)
+    print(type(seg))
+    print(torch.min(seg))
+    print(torch.max(seg))
 
-plt.subplot(121)
-plt.imshow(vol.squeeze())
+    plt.subplot(121)
+    plt.imshow(vol.squeeze())
 
-plt.subplot(122)
-plt.imshow(seg.squeeze())
+    plt.subplot(122)
+    plt.imshow(seg.squeeze())
 
-plt.show()
+    plt.show()
 """

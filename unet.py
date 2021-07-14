@@ -4,7 +4,7 @@ import torch.nn as nn
 # Training parameters
 lr = 1e-3
 batch_size = 5
-epochs = 10
+epochs = 6
 
 
 ckpt_dir = 'C:/Users/msKim/Desktop/Unet/ckpt'   # train된 네트워크가 저장될 checkpoint dir

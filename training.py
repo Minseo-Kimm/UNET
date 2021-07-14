@@ -9,10 +9,14 @@ from torch.utils.data import DataLoader
 # useSave를 True로 설정하면 저장된 네트워크를 불러와 학습을 시작한다.
 version = 1
 useSave = True
+mode = 'kid'    # 'all' = 모든 슬라이스, 'kid' = kidney 라벨링이 존재하는 슬라이스, 'tum' = tumor 라벨링이 존재하는 슬라이스
+goTraining = False
+goValidation = False
+goImaging = True
 
-dataset_train = kits19_Dataset(dir_train, transform=transform)
+dataset_train = kits19_Dataset(dir_train, transform=transform, mode=mode)
 loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=0)
-dataset_val = kits19_Dataset(dir_val, transform=transform)
+dataset_val = kits19_Dataset(dir_val, transform=transform, mode=mode)
 loader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=0)
 
 # 데이터의 shape이 모두 512 x 512인지 확인 => case 160은 사이즈가 달라 제외하였다.
@@ -73,69 +77,86 @@ st_epoch = 0
 if (useSave):
     net, optim, st_epoch = load(ckpt_dir = ckpt_dir, net=net, optim=optim)
 
-# Training
-print("TRAINING STARTS")
-for epoch in range(st_epoch, epochs):
-    net.train()
-    loss_arr = []
+if (goTraining) :
+    # Training
+    print("TRAINING STARTS")
+    for epoch in range(st_epoch, epochs):
+        net.train()
+        loss_arr = []
 
-    for batch, data in enumerate(loader_train, 1):
-        # forward pass
-        seg = data['seg'].to(device=device, dtype=torch.float)
-        vol = data['vol'].to(device=device, dtype=torch.float)
+        for batch, data in enumerate(loader_train, 1):
+            # forward pass
+            seg = data['seg'].to(device=device, dtype=torch.float)
+            vol = data['vol'].to(device=device, dtype=torch.float)
 
-        output = net(vol)
+            output = net(vol)
 
-        # backward pass
-        optim.zero_grad()
-        loss = fn_loss(output, seg)
-        loss.backward()
+            # backward pass
+            optim.zero_grad()
+            loss = fn_loss(output, seg)
+            loss.backward()
 
-        optim.step()
+            optim.step()
 
-        # loss 계산
-        loss_arr += [loss.item()]
-        print("TRAIN: EPOCH %04d / %04d | BATCH %04d / %04d | Loss %.4f" %
-              (epoch + 1, epochs, batch, num_batch_train, np.mean(loss_arr)))
-    
-    # 네트워크를 중간중간 저장
-    if epoch % 1 == 0:
-        save(ckpt_dir=ckpt_dir, net=net, optim=optim, epoch=epoch + 1, ver=version)
-
-# Validation
-print("\n\nVALIDATION STARTS")
-
-with torch.no_grad():
-    net.eval()
-    loss_arr = []
-
-    for batch, data in enumerate(loader_val, 1):
-        # forward pass
-        seg = data['seg'].to(device, dtype=torch.float)
-        vol = data['vol'].to(device, dtype=torch.float)
-
-        output = net(vol)
-
-        # loss 계산
-        loss = fn_loss(output, seg)
-        loss_arr += [loss.item()]
-        print("BATCH %04d / %04d | LOSS %.4f" % (batch, num_batch_val, np.mean(loss_arr)))
+            # loss 계산
+            loss_arr += [loss.item()]
+            print("TRAIN: EPOCH %04d / %04d | BATCH %04d / %04d | Loss %.4f" %
+                (epoch + 1, epochs, batch, num_batch_train, np.mean(loss_arr)))
         
-        # 이미지 확인
-        """ 
-        for i in range(5):
-            v = vol.cpu().numpy()[i, :, :, :]
-            l = output.cpu().numpy()[i, :, :, :]
-            r = seg.cpu().numpy()[i, :, :, :]
-            plt.subplot(131)
-            plt.imshow(v.squeeze())
+        # 네트워크를 중간중간 저장
+        if epoch % 1 == 0:
+            save(ckpt_dir=ckpt_dir, net=net, optim=optim, epoch=epoch + 1, ver=version)
 
-            plt.subplot(132)
-            plt.imshow(l.squeeze())
+if (goValidation) :
+    # Validation
+    print("\n\nVALIDATION STARTS")
 
-            plt.subplot(133)
-            plt.imshow(r.squeeze())
+    with torch.no_grad():
+        net.eval()
+        loss_arr = []
+
+        for batch, data in enumerate(loader_val, 1):
+            # forward pass
+            seg = data['seg'].to(device, dtype=torch.float)
+            vol = data['vol'].to(device, dtype=torch.float)
+
+            output = net(vol)
+
+            # loss 계산
+            loss = fn_loss(output, seg)
+            loss_arr += [loss.item()]
+            print("BATCH %04d / %04d | LOSS %.4f" % (batch, num_batch_val, np.mean(loss_arr)))
+
+if (goImaging) :
+    with torch.no_grad():
+        net.eval()
+        loss_arr = []
+
+        for batch, data in enumerate(loader_val, 1):
+            # forward pass
+            seg = data['seg'].to(device, dtype=torch.float)
+            vol = data['vol'].to(device, dtype=torch.float)
+
+            output = net(vol)
+
+            # loss 계산
+            loss = fn_loss(output, seg)
+            loss_arr += [loss.item()]
+            print("BATCH %04d / %04d | LOSS %.4f" % (batch, num_batch_val, np.mean(loss_arr)))
+        
+            # 이미지 확인
+            for i in range(5):
+                v = vol.cpu().numpy()[i, :, :, :]
+                l = output.cpu().numpy()[i, :, :, :]
+                r = seg.cpu().numpy()[i, :, :, :]
+                plt.subplot(5, 3, (3*i+1))
+                plt.imshow(v.squeeze())
+
+                plt.subplot(5, 3, (3*i+2))
+                plt.imshow(l.squeeze())
+
+                plt.subplot(5, 3, (3*i+3))
+                plt.imshow(r.squeeze())
 
             plt.show()
-        break
-        """
+            break
