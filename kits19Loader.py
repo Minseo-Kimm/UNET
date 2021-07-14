@@ -91,7 +91,8 @@ class RandomFlip(object):
         data = {'vol': vol, 'seg': seg}
         return data
 
-transform = transforms.Compose([Normalization(), RandomFlip(), ToTensor()])
+transform1 = transforms.Compose([Normalization(), RandomFlip(), ToTensor()])
+transform2 = transforms.Compose([Normalization(), ToTensor()])
 
 """
 # check

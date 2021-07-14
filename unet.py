@@ -13,7 +13,6 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 ## DataLoader 구현하기
 ## Data Augmentation
-
 class UNet(nn.Module):
     def __init__(self):
         super(UNet, self).__init__()
@@ -125,8 +124,6 @@ class UNet(nn.Module):
         dec1_1 = self.dec1_1(dec1_2)
 
         fc = self.fc(dec1_1)
-        pad = nn.ReflectionPad2d(94)
-        fc = pad(fc)
         return fc
 
 
