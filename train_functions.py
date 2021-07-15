@@ -9,6 +9,8 @@ mode = 'kid'            # 'all' = 모든 슬라이스, 'kid' = kidney 라벨링�
 fn_loss = nn.BCEWithLogitsLoss().to(device)
 optim = torch.optim.Adam(net.parameters(), lr=lr)
 
+fn_tonumpy = lambda x: x.to('cpu').detach().numpy().transpose(0, 2, 3, 1)
+
 # segmentation data를 output image의 크기에 맞게 crop
 def cropimg(seg, output):
     s1, s2 = seg.size()[-2:]
