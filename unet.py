@@ -1,11 +1,6 @@
 import torch
 import torch.nn as nn
-
-# Training parameters
-lr = 1e-3
-batch_size = 5
-epochs = 6
-
+import torch.nn.functional as F
 
 ckpt_dir = 'C:/Users/msKim/Desktop/Unet/ckpt'   # train된 네트워크가 저장될 checkpoint dir
 
@@ -124,6 +119,7 @@ class UNet(nn.Module):
         dec1_1 = self.dec1_1(dec1_2)
 
         fc = self.fc(dec1_1)
+        fc = F.softmax(fc, dim=0)
         return fc
 
 
