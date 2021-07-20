@@ -3,6 +3,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 ckpt_dir = 'C:/Users/msKim/Desktop/Unet/ckpt'   # train된 네트워크가 저장될 checkpoint dir
+log_dir = 'C:/Users/msKim/Desktop/Unet/log' 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -12,7 +13,7 @@ class UNet(nn.Module):
     def __init__(self):
         super(UNet, self).__init__()
 
-        def CBR2d(in_chs, out_chs, kernel_size=3, stride=1, padding=0, bias=True):
+        def CBR2d(in_chs, out_chs, kernel_size=3, stride=1, padding=1, bias=True):
             # ConvNet, batchnorm, ReLU를 차례로 수행 (그림의 파란 화살표)
             layers = []
             layers += [nn.Conv2d(in_channels=in_chs, out_channels=out_chs, 
@@ -99,22 +100,22 @@ class UNet(nn.Module):
         dec5_1 = self.dec5_1(enc5_1)
 
         unpool4 = self.unpool4(dec5_1)
-        cat4 = tensorcat(enc4_2, unpool4)
+        cat4 = torch.cat((enc4_2, unpool4), dim=1)
         dec4_2 = self.dec4_2(cat4)
         dec4_1 = self.dec4_1(dec4_2)
 
         unpool3 = self.unpool3(dec4_1)
-        cat3 = tensorcat(enc3_2, unpool3)
+        cat3 = torch.cat((enc3_2, unpool3), dim=1)
         dec3_2 = self.dec3_2(cat3)
         dec3_1 = self.dec3_1(dec3_2)
 
         unpool2 = self.unpool2(dec3_1)
-        cat2 = tensorcat(enc2_2, unpool2)
+        cat2 = torch.cat((enc2_2, unpool2), dim=1)
         dec2_2 = self.dec2_2(cat2)
         dec2_1 = self.dec2_1(dec2_2)
 
         unpool1 = self.unpool1(dec2_1)
-        cat1 = tensorcat(enc1_2, unpool1)
+        cat1 = torch.cat((enc1_2, unpool1), dim=1)
         dec1_2 = self.dec1_2(cat1)
         dec1_1 = self.dec1_1(dec1_2)
 

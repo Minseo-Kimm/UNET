@@ -2,11 +2,11 @@ from kits19Loader import *
 from unet import *
 
 # Training parameters
-lr = 1e-2
-batch_size = 4
-epochs = 10
+lr = 4e-2
+batch_size = 3
+epochs = 8
 mode = 'kid'            # 'all' = 모든 슬라이스, 'kid' = kidney 라벨링이 존재하는 슬라이스, 'tum' = tumor 라벨링이 존재하는 슬라이스
-fn_loss = nn.BCEWithLogitsLoss().to(device)
+fn_loss = nn.MSELoss(reduction='mean').to(device)
 optim = torch.optim.Adam(net.parameters(), lr=lr)
 
 fn_tonumpy = lambda x: x.to('cpu').detach().numpy().transpose(0, 2, 3, 1)
@@ -34,7 +34,7 @@ def load(ckpt_dir, net, optim, pre_loss):
         return net, optim, epoch, pre_loss
     
     ckpt_lst = os.listdir(ckpt_dir)
-    ckpt_lst.sort(key = lambda f: int(''.join(filter(str.isdigit, f))))
+    #ckpt_lst.sort(key = lambda f: int(''.join(filter(str.isdigit, f))))
 
     dict_model = torch.load('%s/%s' % (ckpt_dir, ckpt_lst[-1]))
     net.load_state_dict(dict_model['net'])
