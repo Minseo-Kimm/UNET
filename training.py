@@ -21,8 +21,14 @@ torch.cuda.empty_cache()
 #    메모리 문제로 batch size를 3으로 수정함.
 #    learning rate를 1e-2로 수정함.
 # 5: lr = 4e-2, loss function = MSELoss
-version = 5
-useSave = True         # 저장된 모델 사용하여 학습 시작
+#    average F1 score : 0.17
+# 6: lr = 1e-2, loss function = BCELoss
+#    data normalization에 clipping 추가 (-70, 310)
+#    average F1 score : 0.16
+# 7: lr = 2e-3, loss function = BCELoss
+#    normalization 코드에 오류 발견하여 수정함.
+version = 7
+useSave = False         # 저장된 모델 사용하여 학습 시작
 
 dataset_train = kits19_Dataset(dir_train, transform=transform1, mode=mode)
 loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=0)
@@ -62,8 +68,9 @@ for epoch in range(st_epoch, epochs):
 
         # loss 계산
         loss_arr += [loss.item()]
-        print("TRAIN: EPOCH %04d / %04d | BATCH %04d / %04d | Loss %.4f" %
-            (epoch + 1, epochs, batch, num_batch_train, loss.item()))
+        if (batch % 100 == 0) :
+            print("TRAIN: EPOCH %04d / %04d | BATCH %04d / %04d | Loss %.4f" %
+                (epoch + 1, epochs, batch, num_batch_train, loss.item())) 
 
         # Tensorboard 저장
         """
@@ -93,8 +100,8 @@ for epoch in range(st_epoch, epochs):
             # loss 계산
             loss = fn_loss(output, seg).item()
             loss_arr += [loss]
-            print("VALID: EPOCH %04d / %04d | BATCH %04d / %04d | LOSS %.4f" %
-                  ((epoch + 1), epochs, batch, num_batch_val, loss))
+            #print("VALID: EPOCH %04d / %04d | BATCH %04d / %04d | LOSS %.4f" %
+            #      ((epoch + 1), epochs, batch, num_batch_val, loss))
 
             # Tensorboard 저장
             """

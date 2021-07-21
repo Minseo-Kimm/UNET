@@ -1,12 +1,13 @@
+from torch import float32
 from kits19Loader import *
 from unet import *
 
 # Training parameters
-lr = 4e-2
+lr = 2e-3
 batch_size = 3
-epochs = 8
+epochs = 10
 mode = 'kid'            # 'all' = 모든 슬라이스, 'kid' = kidney 라벨링이 존재하는 슬라이스, 'tum' = tumor 라벨링이 존재하는 슬라이스
-fn_loss = nn.MSELoss(reduction='mean').to(device)
+fn_loss = nn.BCELoss(reduction='mean').to(device)
 optim = torch.optim.Adam(net.parameters(), lr=lr)
 
 fn_tonumpy = lambda x: x.to('cpu').detach().numpy().transpose(0, 2, 3, 1)
@@ -37,6 +38,7 @@ def load(ckpt_dir, net, optim, pre_loss):
     #ckpt_lst.sort(key = lambda f: int(''.join(filter(str.isdigit, f))))
 
     dict_model = torch.load('%s/%s' % (ckpt_dir, ckpt_lst[-1]))
+    print("USED MODEL :  %s" % ckpt_lst[-1])
     net.load_state_dict(dict_model['net'])
     optim.load_state_dict(dict_model['optim'])
     epoch = int(ckpt_lst[-1].split('epoch')[1].split('.pth')[0])
@@ -49,3 +51,18 @@ def makePredict(output):
     result = torch.zeros_like(output)
     result[output > 0.5] = 1
     return result
+
+def F1_score(output, seg):
+        
+    tp = (seg * output).sum().to(torch.float32)
+    tn = ((1 - seg) * (1 - output)).sum().to(torch.float32)
+    fp = ((1 - seg) * output).sum().to(torch.float32)
+    fn = (seg * (1 - output)).sum().to(torch.float32)
+    
+    epsilon = 1e-7
+    
+    precision = tp / (tp + fp + epsilon)
+    recall = tp / (tp + fn + epsilon)
+    
+    f1 = 2 * (precision * recall) / (precision + recall + epsilon)
+    return float(f1)

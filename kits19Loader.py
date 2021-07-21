@@ -71,8 +71,9 @@ class Normalization(object):
     def __call__(self, data):
         vol, seg = data['vol'], data['seg']
 
+        vol = np.clip(vol, -70, 310)
         vol -= np.min(vol)
-        vol /= np.max(vol)
+        vol /= (np.max(vol) - np.min(vol))
         data = {'vol': vol, 'seg': seg}
         return data
 
