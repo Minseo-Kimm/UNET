@@ -8,6 +8,7 @@ import torch.nn.functional as F
 from torch.utils.tensorboard import SummaryWriter
 writer_train = SummaryWriter(log_dir=os.path.join(log_dir, 'train'))
 writer_val = SummaryWriter(log_dir=os.path.join(log_dir, 'val'))
+memo = open(os.path.join(log_dir, 'ver%d.txt' % version), 'a')
 
 gc.collect()
 torch.cuda.empty_cache()
@@ -21,14 +22,24 @@ torch.cuda.empty_cache()
 #    메모리 문제로 batch size를 3으로 수정함.
 #    learning rate를 1e-2로 수정함.
 # 5: lr = 4e-2, loss function = MSELoss
-#    average F1 score : 0.17
+#    average F1 score : 0.17 (epoch 7)
 # 6: lr = 1e-2, loss function = BCELoss
 #    data normalization에 clipping 추가 (-70, 310)
-#    average F1 score : 0.16
+#    average F1 score : 0.16 (epoch 10)
 # 7: lr = 2e-3, loss function = BCELoss
 #    normalization 코드에 오류 발견하여 수정함.
-version = 7
+#    average F1 score : 0.19 (epoch 4)
+# 8: lr = 1e-4
+#    unet의 마지막 softmax 전 단계에 tanh 추가
+#    validation에서 픽셀값이 0.3을 넘으면 1으로 인식하도록 수정
+# 9: unet의 마지막 softmax를 tanh + ReLU로 변경
+#    픽셀값 변환 역치를 0.4로 수정
+#    average F1 score : 
+# 10: lr = 1e-5, 픽셀값 변환 역치 0.5로 수정
+
 useSave = False         # 저장된 모델 사용하여 학습 시작
+
+torch.manual_seed(300)
 
 dataset_train = kits19_Dataset(dir_train, transform=transform1, mode=mode)
 loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=0)
@@ -43,6 +54,7 @@ num_batch_val = np.ceil(num_val / batch_size)
 # 학습 전 저장된 네트워크가 있다면 불러오기
 st_epoch = 0
 pre_loss = 1
+pre_score = 0
 if (useSave):
     net, optim, st_epoch, pre_loss = load(ckpt_dir = ckpt_dir, net=net, optim=optim, pre_loss=pre_loss)
 
@@ -69,8 +81,11 @@ for epoch in range(st_epoch, epochs):
         # loss 계산
         loss_arr += [loss.item()]
         if (batch % 100 == 0) :
-            print("TRAIN: EPOCH %04d / %04d | BATCH %04d / %04d | Loss %.4f" %
-                (epoch + 1, epochs, batch, num_batch_train, loss.item())) 
+            num = (batch //100) % 10
+            print(num, end='')
+        if (batch % 500 == 1) :
+            res = "TRAIN: EPOCH %04d / %04d | BATCH %04d / %04d | Loss %.4f\n" % (epoch + 1, epochs, batch, num_batch_train, np.mean(loss_arr))
+            memo.write(res)
 
         # Tensorboard 저장
         """
@@ -83,12 +98,13 @@ for epoch in range(st_epoch, epochs):
         writer_train.add_image('output', output, num_batch_train * (epoch) + batch, dataformats='NHWC')
         """
     
-    loss_mean = np.mean(loss_arr)
     # writer_train.add_scalar('loss', loss_mean, (epoch + 1))
 
     with torch.no_grad():
+        print("\nVALIDATION STARTS")
         net.eval()
         loss_arr = []
+        acc_arr = []
 
         for batch, data in enumerate(loader_val, 1):
             # forward pass
@@ -98,8 +114,10 @@ for epoch in range(st_epoch, epochs):
             output = net(vol)
 
             # loss 계산
-            loss = fn_loss(output, seg).item()
+            loss = fn_loss(output, seg).detach().item()
+            acc = F1_score(makePredict(output), seg)
             loss_arr += [loss]
+            acc_arr += [acc]
             #print("VALID: EPOCH %04d / %04d | BATCH %04d / %04d | LOSS %.4f" %
             #      ((epoch + 1), epochs, batch, num_batch_val, loss))
 
@@ -111,17 +129,23 @@ for epoch in range(st_epoch, epochs):
             """
     
     loss_mean = np.mean(loss_arr)
+    acc_mean = np.mean(acc_arr)
     print("-------------------------------------------------------------")
-    print("EPOCH : %d | MEAN VALID LOSS : %.4f" % ((epoch + 1), loss_mean))
+    res = "EPOCH : %d | MEAN VALID LOSS : %.4f | SCORE : %.4f\n" % ((epoch + 1), loss_mean, acc_mean)
+    memo.write(res)
+    print("EPOCH : %d | MEAN VALID LOSS : %.4f | SCORE : %.4f" % ((epoch + 1), loss_mean, acc_mean))
     print("-------------------------------------------------------------\n")
     # writer_val.add_scalar('loss', loss_mean, (epoch + 1))
 
-    # loss가 최소이면 해당 네트워크를 저장
-    if (loss_mean < pre_loss):
+    # score가 최소이면 해당 네트워크를 저장
+    # from ver9: 모든 네트워크 저장
+    if (True):
         save(ckpt_dir=ckpt_dir, net=net.cpu(), optim=optim, epoch=epoch + 1, ver=version, loss=loss_mean)
-        pre_loss = loss_mean
+        pre_score = acc_mean
 
 """
 writer_train.close()
 writer_val.close()
 """
+
+memo.close()
