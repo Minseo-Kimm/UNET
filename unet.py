@@ -67,7 +67,7 @@ class UNet(nn.Module):
         self.dec1_2 = CBR2d(in_chs=128, out_chs=64)
         self.dec1_1 = CBR2d(in_chs=64, out_chs=64)
 
-        self.fc = nn.Conv2d(in_channels=64, out_channels=1,
+        self.fc = nn.Conv2d(in_channels=64, out_channels=2,
                             kernel_size=1, stride=1, padding=0, bias=True)
         
         self.tanh = nn.Tanh()

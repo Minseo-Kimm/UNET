@@ -34,8 +34,11 @@ torch.cuda.empty_cache()
 #    validation에서 픽셀값이 0.3을 넘으면 1으로 인식하도록 수정
 # 9: unet의 마지막 softmax를 tanh + ReLU로 변경
 #    픽셀값 변환 역치를 0.4로 수정
-#    average F1 score : 
+#    average F1 score : 0.86 (epoch 8)
 # 10: lr = 1e-5, 픽셀값 변환 역치 0.5로 수정
+#    average F1 score: 0.9046 (epoch 29)
+# 11: output layer 2로 수정
+#     loss func: CrossEntropyLoss
 
 useSave = False         # 저장된 모델 사용하여 학습 시작
 
@@ -74,7 +77,8 @@ for epoch in range(st_epoch, epochs):
 
         # backward pass
         optim.zero_grad()
-        loss = fn_loss(output, seg)
+        seg = seg.long().squeeze()
+        loss = fn_loss(output, seg) # output shape: [3, 2, 512, 512], seg shape: [3, 512, 512]
         loss.backward()
         optim.step()
 
@@ -86,19 +90,6 @@ for epoch in range(st_epoch, epochs):
         if (batch % 500 == 1) :
             res = "TRAIN: EPOCH %04d / %04d | BATCH %04d / %04d | Loss %.4f\n" % (epoch + 1, epochs, batch, num_batch_train, np.mean(loss_arr))
             memo.write(res)
-
-        # Tensorboard 저장
-        """
-        seg = fn_tonumpy(seg)
-        vol = fn_tonumpy(vol)
-        output = fn_tonumpy(makePredict(output))
-
-        writer_train.add_image('seg', seg, num_batch_train * (epoch) + batch, dataformats='NHWC')
-        writer_train.add_image('vol', vol, num_batch_train * (epoch) + batch, dataformats='NHWC')
-        writer_train.add_image('output', output, num_batch_train * (epoch) + batch, dataformats='NHWC')
-        """
-    
-    # writer_train.add_scalar('loss', loss_mean, (epoch + 1))
 
     with torch.no_grad():
         print("\nVALIDATION STARTS")
@@ -114,19 +105,13 @@ for epoch in range(st_epoch, epochs):
             output = net(vol)
 
             # loss 계산
+            seg = seg.long().squeeze()
             loss = fn_loss(output, seg).detach().item()
             acc = F1_score(makePredict(output), seg)
             loss_arr += [loss]
             acc_arr += [acc]
             #print("VALID: EPOCH %04d / %04d | BATCH %04d / %04d | LOSS %.4f" %
             #      ((epoch + 1), epochs, batch, num_batch_val, loss))
-
-            # Tensorboard 저장
-            """
-            writer_val.add_image('seg', seg, num_batch_train * (epoch) + batch, dataformats='NHWC')
-            writer_val.add_image('vol', vol, num_batch_train * (epoch) + batch, dataformats='NHWC')
-            writer_val.add_image('output', output, num_batch_train * (epoch) + batch, dataformats='NHWC')
-            """
     
     loss_mean = np.mean(loss_arr)
     acc_mean = np.mean(acc_arr)
@@ -135,17 +120,11 @@ for epoch in range(st_epoch, epochs):
     memo.write(res)
     print("EPOCH : %d | MEAN VALID LOSS : %.4f | SCORE : %.4f" % ((epoch + 1), loss_mean, acc_mean))
     print("-------------------------------------------------------------\n")
-    # writer_val.add_scalar('loss', loss_mean, (epoch + 1))
 
     # score가 최소이면 해당 네트워크를 저장
     # from ver9: 모든 네트워크 저장
     if (True):
         save(ckpt_dir=ckpt_dir, net=net.cpu(), optim=optim, epoch=epoch + 1, ver=version, loss=loss_mean)
         pre_score = acc_mean
-
-"""
-writer_train.close()
-writer_val.close()
-"""
 
 memo.close()

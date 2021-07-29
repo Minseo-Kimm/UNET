@@ -11,7 +11,7 @@ dir_val = os.path.join(dir_data, 'val')
 dir_test = os.path.join(dir_data, 'test')
 
 class kits19_Dataset(torch.utils.data.Dataset):
-    def __init__(self, data_dir, transform=None, mode='kid'):   
+    def __init__(self, data_dir, transform=None, mode='all'):   
         # data_dir 자리에는 train | val | test가 온다
         # mode에는 all | kid | tum가 오며, all은 모든 슬라이스에 대해, kid와 tum는 각각 kidney와 tumor가 존재하는 슬라이스만 학습한다.
         self.is_test = 'test' in data_dir
@@ -31,11 +31,11 @@ class kits19_Dataset(torch.utils.data.Dataset):
             self.lst_seg = sorted(list(glob(seg_dir + '\*\*.npy')))
 
         else :
-            self.data_dir = data_dir
-            vol_dir = os.path.join(self.data_dir + 'vol')
-            self.lst_vol = sorted(list(glob(vol_dir, '\*\*.npy')))
-            seg_dir = os.path.join(self.data_dir + 'seg_kidney')
-            self.lst_seg = sorted(list(glob(seg_dir, '\*\*.npy')))
+            self.data_dir = os.path.join(data_dir, 'all_valid')
+            vol_dir = os.path.join(self.data_dir, 'vol')
+            self.lst_vol = sorted(list(glob(vol_dir + '\*\*.npy')))
+            seg_dir = os.path.join(self.data_dir, 'seg')
+            self.lst_seg = sorted(list(glob(seg_dir + '\*\*.npy')))
 
     def __len__(self):
         return len(self.lst_vol)
@@ -97,7 +97,7 @@ transform2 = transforms.Compose([Normalization(), ToTensor()])
 
 """
 # check
-data_train = kits19_Dataset(dir_train, transform=transform)
+data_train = kits19_Dataset(dir_train, transform=transform1)
 len = data_train.__len__()
 print(len)
 print(data_train.lst_vol[:10])
@@ -109,11 +109,9 @@ for i in range(10):
     print(idx)
     vol = data['vol']
     seg = data['seg']
-    print(seg)
     print(type(seg))
     print(torch.min(seg))
     print(torch.max(seg))
-
     plt.subplot(121)
     plt.imshow(vol.squeeze())
 

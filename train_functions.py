@@ -6,9 +6,9 @@ from unet import *
 version = 10
 lr = 1e-5
 batch_size = 3
-epochs = 20
-mode = 'kid'            # 'all' = 모든 슬라이스, 'kid' = kidney 라벨링이 존재하는 슬라이스, 'tum' = tumor 라벨링이 존재하는 슬라이스
-fn_loss = nn.BCELoss(reduction='mean').to(device)
+epochs = 40
+mode = 'all'            # 'all' = kid는 1로 tum는 2로 라벨링된 슬라이스, 'kid' = kidney 라벨링이 존재하는 슬라이스, 'tum' = tumor 라벨링이 존재하는 슬라이스
+fn_loss = nn.CrossEntropyLoss().to(device)
 optim = torch.optim.Adam(net.parameters(), lr=lr)
 
 fn_tonumpy = lambda x: x.to('cpu').detach().numpy().transpose(0, 2, 3, 1)
@@ -50,7 +50,7 @@ def load(ckpt_dir, net, optim, pre_loss):
 # output pixels의 값을 0또는 1으로 변환
 def makePredict(output):
     result = torch.zeros_like(output)
-    result[output > 0.4] = 1
+    result[output > 0.5] = 1
     return result
 
 def F1_score(output, seg):
