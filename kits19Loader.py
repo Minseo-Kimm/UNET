@@ -102,14 +102,18 @@ len = data_train.__len__()
 print(len)
 print(data_train.lst_vol[:10])
 print(data_train.lst_seg[:10])
+oshape = data_train.__getitem__(0)['vol'].shape
+print(oshape)
 
-for i in range(10):
-    idx = int(np.random.rand() * len)
-    data = data_train.__getitem__(idx)
-    print(idx)
+for i in range(len):
+    #idx = int(np.random.rand() * len)
+    data = data_train.__getitem__(i)
     vol = data['vol']
-    seg = data['seg']
+    if not (vol.shape == oshape):
+        print(data_train.lst_vol[i])
     print(type(seg))
+    print(vol.shape)
+    print(seg.shape)
     print(torch.min(seg))
     print(torch.max(seg))
     plt.subplot(121)

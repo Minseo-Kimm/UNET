@@ -36,21 +36,27 @@ torch.cuda.empty_cache()
 #    픽셀값 변환 역치를 0.4로 수정
 #    average F1 score : 0.86 (epoch 8)
 # 10: lr = 1e-5, 픽셀값 변환 역치 0.5로 수정
-#    average F1 score: 0.9046 (epoch 29)
-# 11: output layer 2로 수정
+#     average F1 score : 0.9046 (epoch 29)
+# 11: output layer 3으로 수정
 #     loss func: CrossEntropyLoss
+#     average dice score : 0.6584 (epoch 15)
+# 12: unet의 마지막 tanh + ReLU를 softmax로 변경
+#     lr = 1e-4, 픽셀값 변환 역치 0.4
+#     average dice score : 0.6632 (epoch 30)
+# 13: output layer 2로 수정 (background / kidney(include tumor)만 분류)
+#     average dice score : 0.9222 (epoch 36)
 
 useSave = False         # 저장된 모델 사용하여 학습 시작
 
 torch.manual_seed(300)
 
 dataset_train = kits19_Dataset(dir_train, transform=transform1, mode=mode)
-loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, num_workers=0)
+loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True, drop_last=True)
 num_train = len(dataset_train)
 num_batch_train = np.ceil(num_train / batch_size)
 
 dataset_val = kits19_Dataset(dir_val, transform=transform2, mode=mode)
-loader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, num_workers=0)
+loader_val = DataLoader(dataset_val, batch_size=batch_size, shuffle=False, drop_last=True)
 num_val = len(dataset_val)
 num_batch_val = np.ceil(num_val / batch_size)
 
@@ -78,7 +84,7 @@ for epoch in range(st_epoch, epochs):
         # backward pass
         optim.zero_grad()
         seg = seg.long().squeeze()
-        loss = fn_loss(output, seg) # output shape: [3, 2, 512, 512], seg shape: [3, 512, 512]
+        loss = fn_loss(output, seg) # output shape: [3, 3, 512, 512], seg shape: [3, 512, 512]
         loss.backward()
         optim.step()
 
@@ -105,9 +111,8 @@ for epoch in range(st_epoch, epochs):
             output = net(vol)
 
             # loss 계산
-            seg = seg.long().squeeze()
-            loss = fn_loss(output, seg).detach().item()
-            acc = F1_score(makePredict(output), seg)
+            loss = fn_loss(output, seg.long().squeeze()).detach().item()
+            acc = Dice_score(makePredict(output), seg, mode)
             loss_arr += [loss]
             acc_arr += [acc]
             #print("VALID: EPOCH %04d / %04d | BATCH %04d / %04d | LOSS %.4f" %

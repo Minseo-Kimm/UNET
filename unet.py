@@ -70,8 +70,8 @@ class UNet(nn.Module):
         self.fc = nn.Conv2d(in_channels=64, out_channels=2,
                             kernel_size=1, stride=1, padding=0, bias=True)
         
-        self.tanh = nn.Tanh()
-        self.relu = nn.ReLU()
+        #self.tanh = nn.Tanh()
+        #self.relu = nn.ReLU()
         
     def forward(self, x):   # x는 input image
 
@@ -123,8 +123,7 @@ class UNet(nn.Module):
         dec1_1 = self.dec1_1(dec1_2)
 
         fc = self.fc(dec1_1)
-        fc = self.tanh(fc)
-        fc = self.relu(fc)
+        fc = F.softmax(fc, dim=1)
         return fc
 
 

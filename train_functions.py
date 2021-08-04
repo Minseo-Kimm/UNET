@@ -3,11 +3,11 @@ from kits19Loader import *
 from unet import *
 
 # Training parameters
-version = 10
-lr = 1e-5
+version = 13
+lr = 1e-4
 batch_size = 3
 epochs = 40
-mode = 'all'            # 'all' = kid는 1로 tum는 2로 라벨링된 슬라이스, 'kid' = kidney 라벨링이 존재하는 슬라이스, 'tum' = tumor 라벨링이 존재하는 슬라이스
+mode = 'kid'            # 'all' = kid는 1로 tum는 2로 라벨링된 슬라이스, 'kid' = kidney 라벨링이 존재하는 슬라이스, 'tum' = tumor 라벨링이 존재하는 슬라이스
 fn_loss = nn.CrossEntropyLoss().to(device)
 optim = torch.optim.Adam(net.parameters(), lr=lr)
 
@@ -50,11 +50,10 @@ def load(ckpt_dir, net, optim, pre_loss):
 # output pixels의 값을 0또는 1으로 변환
 def makePredict(output):
     result = torch.zeros_like(output)
-    result[output > 0.5] = 1
+    result[output > 0.4] = 1
     return result
 
 def F1_score(output, seg):
-        
     tp = (seg * output).sum().to(torch.float32)
     tn = ((1 - seg) * (1 - output)).sum().to(torch.float32)
     fp = ((1 - seg) * output).sum().to(torch.float32)
@@ -67,3 +66,20 @@ def F1_score(output, seg):
     
     f1 = 2 * (precision * recall) / (precision + recall + epsilon)
     return float(f1)
+
+def Dice_score(output, seg, mode='kid'):
+    seg0 = torch.zeros_like(seg)
+    seg1 = torch.zeros_like(seg)
+    seg2 = torch.zeros_like(seg)
+    seg0[seg == 0] = 1
+    seg1[seg == 1] = 1
+    seg2[seg == 2] = 1
+    score0 = F1_score(output[:, 0, :, :], seg0)
+    score1 = F1_score(output[:, 1, :, :], seg1)
+    if (mode == 'all'):
+        score2 = F1_score(output[:, 2, :, :], seg2)
+        score = (score0 + score1 + score2) / 3.0
+    else :
+        score = (score0 + score1) / 2.0
+
+    return float(score)
